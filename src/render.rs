@@ -88,15 +88,17 @@ impl Renderer {
             return player.to_char();
         }
 
-        // Check for enemies
-        for enemy in enemies {
-            if enemy.is_alive() && enemy.x == x && enemy.y == y {
-                return enemy.to_char();
+        // Only show enemies in revealed areas
+        if map.is_revealed(x, y) {
+            for enemy in enemies {
+                if enemy.is_alive() && enemy.x == x && enemy.y == y {
+                    return enemy.to_char();
+                }
             }
         }
 
-        // Return map tile
-        map.get_tile(x, y).map_or(' ', |t| t.to_char())
+        // Return map tile (handles fog of war internally)
+        map.get_tile_char(x, y)
     }
 
     pub fn render_game_over(&self) -> io::Result<()> {

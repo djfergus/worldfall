@@ -33,6 +33,10 @@ impl Player {
         self.hp > 0
     }
 
+    pub fn heal(&mut self, amount: i32) {
+        self.hp = (self.hp + amount).min(self.max_hp);
+    }
+
     pub fn to_char(&self) -> char {
         '@'
     }

@@ -12,9 +12,9 @@ use render::Renderer;
 use input::{get_input, wait_for_key, Action};
 use combat::{player_attack, enemy_attack};
 
-const MAP_WIDTH: usize = 60;
-const MAP_HEIGHT: usize = 20;
-const NUM_ROOMS: usize = 6;
+const MAP_WIDTH: usize = 100;
+const MAP_HEIGHT: usize = 35;
+const NUM_ROOMS: usize = 12;
 const MIN_ROOM_SIZE: usize = 4;
 const MAX_ROOM_SIZE: usize = 8;
 const ENEMY_CHASE_RANGE: usize = 8;
@@ -36,6 +36,9 @@ impl Game {
         // Spawn player in first room
         let (px, py) = map.player_spawn();
         let player = Player::new(px, py);
+
+        // Reveal starting room
+        map.reveal_room(0);
 
         // Spawn enemies in other rooms
         let spawn_points = map.enemy_spawn_points();
@@ -94,6 +97,39 @@ impl Game {
             self.renderer.add_message(result.message);
         } else if self.map.is_walkable(new_x, new_y) {
             self.player.move_by(dx, dy);
+
+            // Reveal the tile the player stepped on
+            self.map.reveal_at(new_x, new_y);
+
+            // If in a corridor, reveal surrounding tiles to see turns
+            if self.map.is_corridor(new_x, new_y) {
+                self.map.reveal_surroundings(new_x, new_y);
+            }
+
+            // Check for potion pickup
+            if self.map.is_potion(new_x, new_y) {
+                let heal_amount = 5;
+                self.player.heal(heal_amount);
+                self.map.pickup_potion(new_x, new_y);
+                self.renderer.add_message(format!("You drink a potion and restore {} HP!", heal_amount));
+            }
+
+            // If player stepped on a door, reveal adjacent rooms
+            if self.map.is_door(new_x, new_y) {
+                // Check all adjacent tiles for rooms (door is in the wall, not in the room)
+                for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+                    let adj_x = (new_x as i32 + dx) as usize;
+                    let adj_y = (new_y as i32 + dy) as usize;
+                    if let Some(room_idx) = self.map.room_at(adj_x, adj_y) {
+                        self.map.reveal_room(room_idx);
+                    }
+                }
+            }
+
+            // If player stepped directly into a room (handles doorless entrances)
+            if let Some(room_idx) = self.map.room_at(new_x, new_y) {
+                self.map.reveal_room(room_idx);
+            }
         }
     }
 
